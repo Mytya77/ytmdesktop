@@ -22,11 +22,12 @@ import Conf from "conf";
 import log from "electron-log";
 import path from "path";
 import fs from "fs/promises";
+// @ts-expect-error Missing type declarations
 import electronSquirrelStartup from "electron-squirrel-startup";
 
 import MemoryStore from "./memory-store";
 import playerStateStore, { PlayerState, VideoState } from "./player-state-store";
-import { MemoryStoreSchema, StoreSchema, TrayIconStyle } from "../shared/store/schema";
+import { MemoryStoreSchema, StoreSchema, TrayIconStyle, ProxyProtocol } from "../shared/store/schema";
 
 import CompanionServer from "./integrations/companion-server";
 import CustomCSS from "./integrations/custom-css";
@@ -396,6 +397,15 @@ const store = new Conf<StoreSchema>({
     },
     developer: {
       enableDevTools: false
+    },
+    proxy: {
+      enabled: false,
+      protocol: ProxyProtocol.HTTP,
+      host: "",
+      port: 8080,
+      requiresAuth: false,
+      username: null,
+      password: null
     }
   },
   beforeEachMigration: (store, context) => {
@@ -549,8 +559,64 @@ store.onDidAnyChange(async (newState, oldState) => {
   }
 
   if (anyShortcutChanged(newState, oldState)) registerShortcuts();
+
+  // Proxy
+  if (
+    newState.proxy.enabled !== oldState.proxy.enabled ||
+    newState.proxy.protocol !== oldState.proxy.protocol ||
+    newState.proxy.host !== oldState.proxy.host ||
+    newState.proxy.port !== oldState.proxy.port
+  ) {
+    applyProxy();
+  }
 });
 log.info("Created electron store");
+
+// Proxy configuration
+function getProxyProtocolString(protocol: ProxyProtocol): string {
+  switch (protocol) {
+    case ProxyProtocol.HTTP:
+      return "http";
+    case ProxyProtocol.HTTPS:
+      return "https";
+    case ProxyProtocol.SOCKS4:
+      return "socks4";
+    case ProxyProtocol.SOCKS5:
+      return "socks5";
+    default:
+      return "http";
+  }
+}
+
+async function applyProxy() {
+  const proxySettings = store.get("proxy");
+  const ytmSession = session.fromPartition(app.isPackaged ? "persist:ytmview" : "persist:ytmview-dev");
+
+  if (proxySettings.enabled && proxySettings.host) {
+    const protocol = getProxyProtocolString(proxySettings.protocol);
+    const proxyRules = `${protocol}://${proxySettings.host}:${proxySettings.port}`;
+    log.info(`Applying proxy: ${protocol}://${proxySettings.host}:${proxySettings.port}`);
+
+    await session.defaultSession.setProxy({ proxyRules });
+    await ytmSession.setProxy({ proxyRules });
+
+    log.info("Proxy applied successfully");
+  } else {
+    log.info("Clearing proxy settings");
+    await session.defaultSession.setProxy({});
+    await ytmSession.setProxy({});
+  }
+
+  // Clear cached auth to ensure new proxy credentials are used
+  await session.defaultSession.clearAuthCache();
+  await ytmSession.clearAuthCache();
+
+  // Soft reload the YTM view to apply new proxy immediately
+  if (ytmView && ytmView.webContents) {
+    ytmView.webContents.reload();
+    log.info("Reloaded YTM view after proxy change");
+  }
+}
 
 if (store.get("general").disableHardwareAcceleration) {
   app.disableHardwareAcceleration();
@@ -1331,6 +1397,34 @@ const createMainWindow = (): void => {
 // Some APIs can only be used after this event occurs.
 app.on("ready", async () => {
   log.info("Application ready");
+
+  // Apply proxy settings on startup
+  await applyProxy();
+
+  // Handle proxy authentication
+  app.on("login", async (event, _webContents, _details, authInfo, callback) => {
+    if (authInfo.isProxy) {
+      const proxySettings = store.get("proxy");
+      if (proxySettings.enabled && proxySettings.requiresAuth && proxySettings.username && proxySettings.password) {
+        event.preventDefault();
+        let username = proxySettings.username;
+        let password = proxySettings.password;
+
+        // Decrypt credentials if safeStorage is available
+        if (safeStorage.isEncryptionAvailable()) {
+          try {
+            username = safeStorage.decryptString(Buffer.from(proxySettings.username, "hex"));
+            password = safeStorage.decryptString(Buffer.from(proxySettings.password, "hex"));
+          } catch {
+            log.error("Failed to decrypt proxy credentials");
+            return;
+          }
+        }
+
+        callback(username, password);
+      }
+    }
+  });
 
   // First run checks
   const firstRunPath = path.join(app.getPath("userData"), ".first-run");
