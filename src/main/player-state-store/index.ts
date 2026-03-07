@@ -356,6 +356,8 @@ class PlayerStateStore {
     likeStatus: YTMLikeStatus,
     hasFullMetadata: boolean
   ) {
+    if (!videoDetails) return;
+
     this.videoDetails = {
       author: videoDetails.author,
       channelId: videoDetails.channelId,
@@ -364,7 +366,7 @@ class PlayerStateStore {
       albumId: album?.id ?? null,
       likeStatus: transformLikeStatus(likeStatus),
       thumbnails: videoDetails.thumbnail ? videoDetails.thumbnail.thumbnails.map(mapYTMThumbnails) : [], // There are cases where the thumbnails simply don't exist on the videoDetails but can be found via other means. Podcasts notably can do this
-      durationSeconds: parseInt(videoDetails.lengthSeconds),
+      durationSeconds: videoDetails.lengthSeconds ? parseInt(videoDetails.lengthSeconds) : 0,
       id: videoDetails.videoId,
       videoType: transformVideoType(videoDetails.musicVideoType),
       isLive: !!videoDetails.isLive
