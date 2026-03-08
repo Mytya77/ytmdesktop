@@ -1,8 +1,8 @@
 {
-  "name": "youtube-music-desktop-app",
-  "productName": "YouTube Music Desktop App",
+  "name": "youtube-music-desktop-app-mod",
+  "productName": "YouTube Music Mod",
   "version": "2.0.11",
-  "description": "YouTube Music Desktop App",
+  "description": "YouTube Music Desktop App Mod (proxy + AD)",
   "main": ".vite/main/index.js",
   "private": true,
   "scripts": {
@@ -59,6 +59,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/type-provider-typebox": "^5.2.0",
     "@ghostery/adblocker-electron": "^2.14.1",
+    "@ghostery/adblocker-electron-preload": "^2.14.1",
     "@sinclair/typebox": "^0.34.48",
     "conf": "^10.2.0",
     "cross-fetch": "^4.1.0",

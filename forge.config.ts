@@ -18,7 +18,7 @@ for (let i = 0; i < process.argv.length; i++) {
 
 const config: ForgeConfig = {
   packagerConfig: {
-    executableName: "youtube-music-desktop-app",
+    executableName: "youtube-music-desktop-app-mod",
     icon: "./src/assets/icons/ytmd",
     extraResource: [
       "./src/assets/icons/tray.ico",
