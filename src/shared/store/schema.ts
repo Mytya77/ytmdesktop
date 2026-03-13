@@ -16,6 +16,7 @@ export type StoreSchema = {
     version: 1;
   };
   general: {
+    adBlockerEnabled: boolean;
     disableHardwareAcceleration: boolean;
     hideToTrayOnClose: boolean;
     showNotificationOnSongChange: boolean;

@@ -37,6 +37,7 @@ const shortcuts: StoreSchema["shortcuts"] = await store.get("shortcuts");
 const lastFM: StoreSchema["lastfm"] = await store.get("lastfm");
 const proxyConfig: StoreSchema["proxy"] = await store.get("proxy");
 
+const adBlockerEnabled = ref<boolean>(general.adBlockerEnabled);
 const disableHardwareAcceleration = ref<boolean>(general.disableHardwareAcceleration);
 const hideToTrayOnClose = ref<boolean>(general.hideToTrayOnClose);
 const showNotificationOnSongChange = ref<boolean>(general.showNotificationOnSongChange);
@@ -103,6 +104,7 @@ if (safeStorageAvailable.value && proxyConfig.requiresAuth) {
 }
 
 store.onDidAnyChange(async newState => {
+  adBlockerEnabled.value = newState.general.adBlockerEnabled;
   disableHardwareAcceleration.value = newState.general.disableHardwareAcceleration;
   hideToTrayOnClose.value = newState.general.hideToTrayOnClose;
   showNotificationOnSongChange.value = newState.general.showNotificationOnSongChange;
@@ -183,6 +185,7 @@ async function memorySettingsChanged() {
 }
 
 async function settingsChanged() {
+  store.set("general.adBlockerEnabled", adBlockerEnabled.value);
   store.set("general.hideToTrayOnClose", hideToTrayOnClose.value);
   store.set("general.showNotificationOnSongChange", showNotificationOnSongChange.value);
   store.set("general.startOnBoot", startOnBoot.value);
@@ -357,6 +360,7 @@ window.ytmd.handleUpdateDownloaded(() => {
           <button class="restart-button" @click="restartApplication">Restart</button>
         </div>
         <div v-if="currentTab === 1" class="general-tab">
+          <YTMDSetting v-model="adBlockerEnabled" type="checkbox" name="Block ads" @change="settingsChanged" />
           <YTMDSetting v-if="!isDarwin" v-model="hideToTrayOnClose" type="checkbox" name="Hide to tray on close" @change="settingsChanged" />
           <YTMDSetting v-model="showNotificationOnSongChange" type="checkbox" name="Show notification on song change" @change="settingsChanged" />
           <YTMDSetting v-model="startOnBoot" type="checkbox" name="Start on boot" @change="settingsChanged" />
